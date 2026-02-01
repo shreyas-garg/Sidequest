@@ -11,7 +11,6 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { sideQuestService } from '@/src/services/api';
 import { Input } from '@/src/components/Input';
 import { Button } from '@/src/components/Button';
@@ -27,8 +26,7 @@ export const CreateSideQuestScreen = () => {
   const [category, setCategory] = useState('concert');
   const [location, setLocation] = useState('');
   const [maxParticipants, setMaxParticipants] = useState('5');
-  const [dateTime, setDateTime] = useState(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dateTime, setDateTime] = useState('');
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const mutation = useMutation({
@@ -49,10 +47,10 @@ export const CreateSideQuestScreen = () => {
     if (!title.trim()) newErrors.title = 'Title is required';
     if (!description.trim()) newErrors.description = 'Description is required';
     if (!location.trim()) newErrors.location = 'Location is required';
+    if (!dateTime.trim()) newErrors.dateTime = 'Date & Time is required';
     if (!maxParticipants || parseInt(maxParticipants) < 1) {
       newErrors.maxParticipants = 'Must allow at least 1 participant';
     }
-    if (dateTime < new Date()) newErrors.dateTime = 'Date must be in the future';
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -61,22 +59,31 @@ export const CreateSideQuestScreen = () => {
   const handleCreate = async () => {
     if (!validateForm()) return;
 
+    // Try to parse the date, if it fails, use current date + 1 day
+    let parsedDate;
+    try {
+      parsedDate = new Date(dateTime);
+      if (isNaN(parsedDate.getTime())) {
+        // Invalid date, use tomorrow
+        parsedDate = new Date();
+        parsedDate.setDate(parsedDate.getDate() + 1);
+      }
+    } catch {
+      parsedDate = new Date();
+      parsedDate.setDate(parsedDate.getDate() + 1);
+    }
+
     mutation.mutate({
       title,
       description,
       category,
       location,
       maxParticipants: parseInt(maxParticipants),
-      dateTime: dateTime.toISOString(),
+      dateTime: parsedDate.toISOString(),
     });
   };
 
-  const handleDateChange = (event: any, selectedDate: any) => {
-    setShowDatePicker(false);
-    if (selectedDate) {
-      setDateTime(selectedDate);
-    }
-  };
+
 
   const styles = StyleSheet.create({
     container: {
@@ -206,30 +213,14 @@ export const CreateSideQuestScreen = () => {
           </View>
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionLabel}>Date & Time</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowDatePicker(true)}
-          >
-            <Text style={styles.dateButtonText}>
-              {dateTime.toLocaleString()}
-            </Text>
-          </TouchableOpacity>
-          {errors.dateTime && (
-            <Text style={{ ...TYPOGRAPHY.caption, color: COLORS.error }}>
-              {errors.dateTime}
-            </Text>
-          )}
-          {showDatePicker && (
-            <DateTimePicker
-              value={dateTime}
-              mode="datetime"
-              display="spinner"
-              onChange={handleDateChange}
-            />
-          )}
-        </View>
+        <Input
+          label="Date & Time"
+          placeholder="2026-01-31 18:00 or Jan 31 2026 6:00 PM"
+          value={dateTime}
+          onChangeText={setDateTime}
+          icon="time"
+          error={errors.dateTime}
+        />
 
         <Input
           label="Location"

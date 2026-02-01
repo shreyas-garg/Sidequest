@@ -9,28 +9,37 @@ import {
   Alert,
 } from 'react-native';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { sideQuestService, joinRequestService } from '@/src/services/api';
 import { useAuth } from '@/src/contexts/AuthContext';
 import { Button } from '@/src/components/Button';
 import { COLORS, SPACING, TYPOGRAPHY, SHADOWS } from '@/src/theme';
 
-export const SideQuestDetailsScreen = ({ route }: any) => {
+export const SideQuestDetailsScreen = () => {
   const router = useRouter();
-  const { id } = route?.params || {};
+  const params = useLocalSearchParams();
+  const id = typeof params.id === 'string' ? params.id : params.id?.[0];
   const { user } = useAuth();
+
+  console.log('Details screen params:', params);
+  console.log('Extracted ID:', id);
 
   const { data: sideQuest, isLoading } = useQuery({
     queryKey: ['sidequest', id],
     queryFn: async () => {
+      if (!id) throw new Error('No ID provided');
       const response = await sideQuestService.getSideQuestById(id);
       return response.data;
     },
+    enabled: !!id,
   });
 
   const joinMutation = useMutation({
-    mutationFn: () => joinRequestService.requestToJoin(id),
+    mutationFn: () => {
+      if (!id) throw new Error('No ID provided');
+      return joinRequestService.requestToJoin(id);
+    },
     onSuccess: () => {
       Alert.alert('Success', 'Request to join sent!');
       router.back();
@@ -39,6 +48,15 @@ export const SideQuestDetailsScreen = ({ route }: any) => {
       Alert.alert('Error', error.response?.data?.message || 'Failed to send request');
     },
   });
+
+  if (!id) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: SPACING.lg }}>
+        <Text style={{ ...TYPOGRAPHY.h3, color: COLORS.gray900, marginBottom: SPACING.md }}>Invalid quest ID</Text>
+        <Button label="Go Back" onPress={() => router.back()} />
+      </View>
+    );
+  }
 
   const getCategoryColor = (cat: string) => {
     const colors: Record<string, string> = {

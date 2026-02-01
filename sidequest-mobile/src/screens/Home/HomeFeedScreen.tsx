@@ -7,16 +7,20 @@ import {
   ActivityIndicator,
   Text,
   TouchableOpacity,
+  Alert,
+  SafeAreaView,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { sideQuestService } from '@/src/services/api';
 import { SideQuestCard } from '@/src/components/SideQuestCard';
+import { useAuth } from '@/src/contexts/AuthContext';
 import { COLORS, SPACING, TYPOGRAPHY } from '@/src/theme';
 
 export const HomeFeedScreen = () => {
   const router = useRouter();
+  const { user, logout } = useAuth();
   const [filters, setFilters] = useState<any>({});
 
   const { data: sideQuests = [], isLoading, refetch, isRefetching } = useQuery({
@@ -29,6 +33,27 @@ export const HomeFeedScreen = () => {
 
   const handleSideQuestPress = (id: string) => {
     router.push(`/(app)/details?id=${id}`);
+  };
+
+  const handleProfilePress = () => {
+    Alert.alert(
+      'Profile',
+      `Logged in as ${user?.name || 'User'}`,
+      [
+        {
+          text: 'Logout',
+          style: 'destructive',
+          onPress: async () => {
+            await logout();
+            router.replace('/(auth)/login');
+          },
+        },
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+      ]
+    );
   };
 
   const styles = StyleSheet.create({
@@ -117,14 +142,14 @@ export const HomeFeedScreen = () => {
   );
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Explore</Text>
         <View style={styles.headerActions}>
           <TouchableOpacity onPress={() => {}}>
             <Ionicons name="filter" size={24} color={COLORS.primary} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => {}}>
+          <TouchableOpacity onPress={handleProfilePress}>
             <Ionicons name="person-circle" size={24} color={COLORS.primary} />
           </TouchableOpacity>
         </View>
@@ -159,6 +184,6 @@ export const HomeFeedScreen = () => {
       >
         <Ionicons name="add" size={28} color={COLORS.white} />
       </TouchableOpacity>
-    </View>
+    </SafeAreaView>
   );
 };
